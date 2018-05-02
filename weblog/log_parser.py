@@ -8,7 +8,14 @@ logger = logging.getLogger(__name__)
 
 
 class LogParser:
+    """Class to parse a log file and search for a specific ip/subnet address"""
     def __init__(self, ip, log_file, top):
+        """ __init_
+        Args:
+            ip (str): ip to searching for
+            log_file (str): log file name to parser
+            top (int): number of records to include in the top list
+        """
         self._ip_to_check = ip
         self._log_file = log_file
         self._top = top
@@ -23,6 +30,10 @@ class LogParser:
         self._output = []
 
     def _check_params(self):
+        """ Check parameters for errors
+        Raises:
+            RuntimeError if an error occurs
+        """
         if self._ip_to_check is None:
             raise RuntimeError('Please specify an ip/subnet for filtering')
         if self._log_file is None:
@@ -53,6 +64,13 @@ class LogParser:
             raise RuntimeError(e)
 
     def _filter_ip(self, matched_ip):
+        """Check if the regex matched ip is equal to the ip address searched or if it's contained inside the subnet searched
+        Args:
+            matched_ip (str): IP address matched by log line regex
+
+        Returns:
+            True if equal/contained, False otherwise
+        """
         try:
             log_ip = ipaddress.ip_address(matched_ip.strip())
         except Exception:
@@ -69,6 +87,10 @@ class LogParser:
         return False
 
     def _parse_line(self, line):
+        """Apply filter to the current log line
+        Args:
+            line (str): current line of the log file
+        """
         match = self._log_regex(line)
         if match is None:
             return
@@ -82,7 +104,12 @@ class LogParser:
         except Exception:
             logger.debug('Cannot get ip address from log liune')
 
-    def _print_output(self):
+    def print_output(self, matched_lines, top=None):
+        """Print matched lines and top ip if requested
+        Args:
+            matched_lines (list): list of lines that match the search pattern
+            top (list): list of tuples for top ip
+        """
         for k, v in self._matches.items():
             self._output.extend(v)
 
@@ -95,6 +122,10 @@ class LogParser:
                 print('{}\t\t{}'.format(ip[0], ip[1]))
 
     def parse(self):
+        """Main function to start log parsing
+        Raises:
+            RuntimeError if any error occurs during execution
+        """
         try:
             self._check_params()
         except Exception as e:
@@ -104,4 +135,8 @@ class LogParser:
             for line in f:
                 self._parse_line(line)
 
-        self._print_output()
+        if self._top > 0:
+            return self._matches, Counter(self._top_ip).most_common(self._top)
+        else:
+            return self._matches
+
